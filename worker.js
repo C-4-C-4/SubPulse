@@ -1,8 +1,8 @@
 // 1. 订阅地址配置区
 const SUBSCRIPTIONS = [
-  { name: "Mitce 订阅", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" },
-  { name: "备用机场 A", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" },
-  { name: "备用机场 B", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" }
+  { name: "Mitce 订阅", url: "#" },
+  { name: "备用机场 A", url: "#" },
+  { name: "备用机场 B", url: "#" }
 ];
 
 export default {
