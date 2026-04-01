@@ -201,7 +201,7 @@ export default {
         </header>
         <div id="app" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start transition-opacity duration-300"></div>
         <footer class="animate text-[10px] uppercase tracking-[0.3em] text-muted-foreground pt-12 border-t border-border flex justify-between font-bold">
-          <p>© 2022 - 2026 CcoMm • 极光纯净版</p>
+          <p>© 2026 CCCC4444 • </p>
           <div class="flex gap-6"><span class="opacity-40">STABLE</span><span class="text-primary tracking-tighter">V5.1.0</span></div>
         </footer>
       </main>
