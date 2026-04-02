@@ -1,148 +1,84 @@
-# 订阅监控 · Pure
+# 订阅监控看板 (Subscription Monitor • Pure)
 
-> 基于 Cloudflare Workers 构建的代理订阅流量监控面板，支持多订阅源实时追踪双向流量与到期状态。
+## 📌 项目简介
+这是一个基于 Cloudflare Workers 构建的轻量级、无服务器（Serverless）订阅流量监控看板。该程序将后端 API 解析与前端页面渲染集于一身，能够定时获取指定代理节点订阅链接（如 V2Ray、Clash 等）的流量信息，并通过一个具有现代化 UI 设计的页面进行实时可视化展示。
+版本信息：**STABLE V5.1.0**
 
-![Version](https://img.shields.io/badge/version-5.1.0-blue) ![Platform](https://img.shields.io/badge/platform-Cloudflare%20Workers-orange) ![License](https://img.shields.io/badge/license-MIT-green)
+## ✨ 核心特性
 
----
+### 后端 (API 层)
 
-## ✨ 功能特性
+- **并发数据获取**: 使用 `Promise.all` 异步并发请求多个订阅链接，极大缩短数据获取时间。
+- **严格超时控制**: 内置 `fetchWithTimeout` 机制（默认 5 秒），防止因单个异常节点响应过慢而阻塞整个页面的加载。
+- **精准请求模拟**: 请求头部伪装为 `v2rayN/6.23`，以确保兼容大部分机场/服务商的订阅下发策略。
+- **智能数据提取**: 自动解析 HTTP 响应头中的 `Subscription-Userinfo` 字段，提取 `upload`、`download`、`total` 和 `expire` 数据，并自动换算为 GB 单位。
+- **内置缓存控制**: 接口级设置 `Cache-Control: public, max-age=60`，静态 HTML 缓存 `3600` 秒，有效降低源站 API 压力。
 
-- **多订阅聚合** — 同时监控多个机场/订阅源，集中展示
-- **实时流量统计** — 显示上传量、下载量、已用流量、总流量及使用百分比
-- **到期日提醒** — 自动解析并展示订阅到期时间
-- **进度条可视化** — 直观呈现流量使用情况，超量时自动变色预警
-- **深色 / 浅色主题** — 胶囊式开关，偏好自动持久化
-- **骨架屏加载** — 数据加载期间展示占位动画，体验流畅
-- **一键刷新** — 点击刷新按钮即可重新拉取最新数据
-- **响应式布局** — 移动端、平板、桌面端均可完美适配
+### 前端 (UI 层)
 
----
+- **现代化纯粹设计**: 采用 "Pure" 主题理念，基于 Tailwind CSS 构建高斯模糊卡片（毛玻璃效果）、渐变高亮背景和丝滑的动画过渡。
+- **骨架屏加载**: 数据请求期间提供 Skeleton 骨架屏动画，拒绝白屏等待，提升用户体验。
+- **动态状态反馈**:
+  - 根据流量使用比例自动改变进度条和数值的颜色（正常、警告、危险）。
+  - 遇到无法连接或解析失败的节点时，展示专属的红色“异常” UI 样式。
+- **完善的暗黑模式**: 支持自动检测并跟随系统主题，同时提供一个带丝滑动画的“日月胶囊开关”供手动切换（偏好会自动保存至 `localStorage`）。
 
-## 🚀 快速部署
+## 🛠️ 技术栈
 
-### 前提条件
+- **运行环境**: Cloudflare Workers
+- **前端样式**: Tailwind CSS (通过 CDN 引入) + 原生 CSS 变量
+- **前端逻辑**: Vanilla JavaScript
 
-- 一个 [Cloudflare](https://cloudflare.com) 账号
-- 已安装 [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（可选，用于命令行部署）
+## ⚙️ 配置指南
+在部署之前，你只需要修改代码最顶部的 `SUBSCRIPTIONS` 数组即可：
 
-### 方式一：Cloudflare Dashboard（推荐新手）
-
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. 进入 **Workers & Pages** → 点击 **Create Application** → **Create Worker**
-3. 将 `worker.js` 的全部内容粘贴到编辑器中
-4. 修改顶部 `SUBSCRIPTIONS` 配置（见下方说明）
-5. 点击 **Save and Deploy**，完成！
-
-### 方式二：Wrangler CLI
-
-```bash
-# 1. 安装 Wrangler
-npm install -g wrangler
-
-# 2. 登录 Cloudflare
-wrangler login
-
-# 3. 部署 Worker
-wrangler deploy worker.js --name sub-monitor
-```
-
----
-
-## ⚙️ 配置说明
-
-打开 `worker.js`，修改文件顶部的 `SUBSCRIPTIONS` 数组，填入你自己的订阅信息：
-
-```js
+```javascript
+// 1. 订阅地址配置区
 const SUBSCRIPTIONS = [
-  {
-    name: "主力机场",           // 显示在面板上的名称，可自定义
-    url: "https://your-sub-url" // 你的订阅链接
-  },
-  {
-    name: "备用机场 A",
-    url: "https://your-backup-url-a"
-  },
-  // 可继续添加更多订阅...
+  { name: "你的主用机场", url: "https://your-sub-link-1.com/xxx" },
+  { name: "备用节点 A", url: "https://your-sub-link-2.com/xxx" },
+  { name: "备用节点 B", url: "https://your-sub-link-3.com/xxx" }
 ];
+
 ```
 
-> **注意：** 订阅链接需支持返回 `Subscription-Userinfo` 响应头，大多数主流机场的 Clash/V2Ray 订阅链接均支持此标准。
+- **name**: 显示在面板上的自定义名称。
+- **url**: 你的真实订阅链接。
 
----
+## 📡 API 接口参考
+该 Worker 自带一个隐藏的数据接口，供前端 AJAX 调用。
 
-## 📡 API 接口
-
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/` | `GET` | 返回监控面板 HTML 页面 |
-| `/api/traffic` | `GET` | 返回所有订阅的流量 JSON 数据 |
-
-### `/api/traffic` 响应示例
+- **路径**: `/api/traffic`
+- **请求方式**: `GET`
+- **响应格式**: JSON 数组
+- **数据结构示例**:
 
 ```json
 [
   {
-    "name": "主力机场",
-    "up_gb": "1.23",
-    "dl_gb": "45.67",
-    "used_gb": "46.90",
-    "total_gb": "100.00",
-    "usage_percent": "46.9",
+    "name": "你的主用机场",
+    "up_gb": "12.50",
+    "dl_gb": "180.20",
+    "used_gb": "192.70",
+    "total_gb": "500.00",
+    "usage_percent": "38.5",
     "expire_date": "2026-12-31"
+  },
+  {
+    "name": "备用节点 A",
+    "error": true
   }
 ]
-```
-
-字段含义：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `name` | string | 订阅名称 |
-| `up_gb` | string | 上传量（GB） |
-| `dl_gb` | string | 下载量（GB） |
-| `used_gb` | string | 总已用流量（GB） |
-| `total_gb` | string | 套餐总流量（GB） |
-| `usage_percent` | string | 使用百分比（%） |
-| `expire_date` | string | 到期日期（YYYY-MM-DD），无期限则为 `"无期限"` |
-| `error` | boolean | 请求失败时为 `true` |
-
----
-
-## 🎨 界面预览
-
-面板采用极简设计风格，主要元素：
-
-- **顶部标题栏** — 页面标题 + 主题切换开关 + 刷新按钮
-- **订阅卡片网格** — 每张卡片展示一个订阅的完整信息
-- **流量进度条** — 颜色随使用率变化：正常（蓝）→ 警戒（橙）→ 超量（红）
-- **底部页脚** — 版本号与版权信息
-
----
-
-## 📁 项目结构
 
 ```
-.
-└── worker.js        # 全量单文件 Worker（前端页面 + 后端 API 一体）
-```
 
-本项目为 **单文件架构**，所有逻辑（路由、API、HTML/CSS/JS）均内联于 `worker.js`，无需构建工具，部署零依赖。
+## 🚀 部署说明
 
----
-
-## 🔧 技术栈
-
-| 技术 | 用途 |
-|------|------|
-| Cloudflare Workers | 边缘运行时，全球低延迟 |
-| Tailwind CSS (CDN) | 快速样式构建 |
-| Vanilla JavaScript | 前端交互逻辑 |
-
----
-
-## 📝 许可证
-
-© 2022 - 2026 **CCCC4444** · 
-
-本项目仅供学习与个人使用，请勿用于任何违反当地法律法规的用途。
+1. 登录 Cloudflare Dashboard。
+2. 导航至 **Workers & Pages**，点击 **Create Worker**。
+3. 为你的应用输入一个名称，点击 **Deploy**。
+4. 部署完成后，点击 **Edit code** 进入网页编辑器。
+5. 将本地 `worker.js` 中的所有代码粘贴并覆盖编辑器内的默认代码。
+6. 修改代码第 2-6 行的 `SUBSCRIPTIONS` 配置为你自己的订阅信息。
+7. 点击右上角的 **Save and deploy**。
+8. 访问 Cloudflare 分配的 `*.workers.dev` 域名即可查看你的专属监控看板。

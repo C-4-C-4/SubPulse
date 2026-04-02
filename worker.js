@@ -246,9 +246,9 @@ export default {
           </div>
         </header>
         <div id="app" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start transition-opacity duration-300"></div>
-        <footer class="animate text-[10px] uppercase tracking-[0.3em] text-muted-foreground pt-12 border-t border-border flex justify-between font-bold">
-          <p>© 2026 CCCC4444 • </p>
-          <div class="flex gap-6"><span class="opacity-40">STABLE</span><span class="text-primary tracking-tighter">V5.1.0</span></div>
+        <footer class="animate text-[10px] uppercase tracking-[0.1em] text-muted-foreground pt-12 border-t border-border flex justify-between font-bold">
+          <a href="https://github.com/C-4-C-4/SubPulse" target="_blank" class="hover:text-primary transition-colors">https://github.com/C-4-C-4/SubPulse</a>
+          <div class="flex gap-6"><span class="opacity-40">STABLE</span><span class="text-primary tracking-tighter">V1</span></div>
         </footer>
       </main>
     </body>
