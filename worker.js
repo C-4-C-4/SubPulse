@@ -1,38 +1,62 @@
 // 1. 订阅地址配置区
 const SUBSCRIPTIONS = [
-  { name: "Mitce 订阅", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" },
-  { name: "备用机场 A", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" },
-  { name: "备用机场 B", url: "https://app.mitce.net/?sid=500204&token=srvbjgb&app=clashverge" }
+  { name: "Mitce 订阅", url: "#" },
+  { name: "备用机场 A", url: "#" },
+  { name: "备用机场 B", url: "#" }
 ];
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Helper: 为 fetch 添加超时控制
+    const fetchWithTimeout = (resource, options, timeout = 5000) => {
+      return Promise.race([
+        fetch(resource, options),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+      ]);
+    };
+
     // Backend API Logic (流量解析)
     if (url.pathname === "/api/traffic") {
       const results = await Promise.all(SUBSCRIPTIONS.map(async (sub) => {
         try {
-          const resp = await fetch(sub.url, { headers: { "User-Agent": "v2rayN/6.23" } });
+          const resp = await fetchWithTimeout(sub.url, { headers: { "User-Agent": "v2rayN/6.23" } });
           const header = resp.headers.get("Subscription-Userinfo");
           if (!header) return { name: sub.name, error: true };
+          
           const parseMatch = (str, key) => {
             const match = str.match(new RegExp(`${key}=(\\d+)`));
             return match ? parseInt(match[1]) : 0;
           };
+          
           const up = parseMatch(header, "upload"), dl = parseMatch(header, "download");
           const total = parseMatch(header, "total"), expire = parseMatch(header, "expire");
+          
           const up_gb = up / (1024 ** 3), dl_gb = dl / (1024 ** 3);
           const used_gb = up_gb + dl_gb, total_gb = total / (1024 ** 3);
+          
           return {
-            name: sub.name, up_gb: up_gb.toFixed(2), dl_gb: dl_gb.toFixed(2),
-            used_gb: used_gb.toFixed(2), total_gb: total_gb.toFixed(2),
+            name: sub.name, 
+            up_gb: up_gb.toFixed(2), 
+            dl_gb: dl_gb.toFixed(2),
+            used_gb: used_gb.toFixed(2), 
+            total_gb: total_gb.toFixed(2),
             usage_percent: total_gb > 0 ? ((used_gb / total_gb) * 100).toFixed(1) : 0,
             expire_date: expire ? new Date(expire * 1000).toISOString().split('T')[0] : "无期限"
           };
-        } catch (e) { return { name: sub.name, error: true }; }
+        } catch (e) { 
+          return { name: sub.name, error: true }; 
+        }
       }));
-      return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      
+      return new Response(JSON.stringify(results), { 
+        headers: { 
+          "Content-Type": "application/json", 
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=60" // 添加缓存控制，缓存 60 秒
+        } 
+      });
     }
 
     const HTML = `
@@ -121,6 +145,28 @@ export default {
           const app = document.getElementById('app');
           let html = '';
           data.forEach((sub) => {
+            // 处理异常节点
+            if (sub.error) {
+              html += \`
+                <section class="pure-card flex flex-col space-y-8 animate border-red-500/30 bg-red-500/5">
+                  <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                      <h2 class="text-2xl font-bold tracking-tight">\${sub.name}</h2>
+                      <p class="text-[10px] text-red-500/70 font-mono tracking-[0.2em]">获取数据失败</p>
+                    </div>
+                    <span class="px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full text-[9px] font-black uppercase tracking-widest text-red-500">
+                      异常
+                    </span>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center justify-center py-6 space-y-2 opacity-60">
+                    <svg class="w-8 h-8 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="text-xs text-muted-foreground font-medium">无法连接或解析订阅信息</p>
+                  </div>
+                </section>\`;
+              return;
+            }
+
+            // 处理正常节点
             const colorClass = sub.usage_percent > 85 ? 'text-red-500' : (sub.usage_percent > 60 ? 'text-orange-500' : 'text-primary');
             html += \`
               <section class="pure-card flex flex-col space-y-8 animate">
@@ -129,8 +175,8 @@ export default {
                     <h2 class="text-2xl font-bold tracking-tight">\${sub.name}</h2>
                     <p class="text-[10px] text-muted-foreground font-mono tracking-[0.2em] opacity-70">到期: \${sub.expire_date}</p>
                   </div>
-                  <span class="px-3 py-1 bg-muted border border-border rounded-full text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                    \${sub.error ? '异常' : '正常'}
+                  <span class="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[9px] font-black uppercase tracking-widest text-primary">
+                    正常
                   </span>
                 </div>
                 <div class="space-y-5">
@@ -201,7 +247,7 @@ export default {
         </header>
         <div id="app" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start transition-opacity duration-300"></div>
         <footer class="animate text-[10px] uppercase tracking-[0.3em] text-muted-foreground pt-12 border-t border-border flex justify-between font-bold">
-          <p>© 2022 - 2026 CcoMm • 极光纯净版</p>
+          <p>© 2026 CCCC4444 • </p>
           <div class="flex gap-6"><span class="opacity-40">STABLE</span><span class="text-primary tracking-tighter">V5.1.0</span></div>
         </footer>
       </main>
@@ -209,6 +255,11 @@ export default {
     </html>
     `;
 
-    return new Response(HTML, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+    return new Response(HTML, { 
+      headers: { 
+        "Content-Type": "text/html;charset=UTF-8",
+        "Cache-Control": "public, max-age=3600" // 缓存HTML页面
+      } 
+    });
   }
 }
